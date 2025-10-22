@@ -6,7 +6,7 @@
 #include "fileutil.h"
 #include "jsonschema.h"
 #include "oas_extract.h"
-#include "external/cJSON.h"
+#include "cJSON.h"
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Uso: %s <request.json> <openapi.json>\n", prog);
