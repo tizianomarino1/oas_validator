@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <stdarg.h>
 
 static jsval_result ok(void) { return (jsval_result){true, NULL}; }
 
