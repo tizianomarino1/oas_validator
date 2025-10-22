@@ -10,13 +10,7 @@ Validatore OpenAPI 3.0
    ```cmd
    cd \percorso\alla\cartella\oas_validator
    ```
-3. Lancia lo script incluso per compilare tutte le sorgenti con MSVC:
-   ```cmd
-   compile.bat
-   ```
-   Verrà generato l'eseguibile `oas_validator.exe`.
-
-> In alternativa puoi lanciare direttamente il comando usato dallo script:
+3. Lanciare direttamente il comando usato dallo script:
 > ```cmd
 > cl /W4 /O2 /std:c11 /Iinclude /Iexternal src\main.c src\fileutil.c src\oas_extract.c src\jsonschema.c external\cJSON.c /Fe:oas_validator.exe
 > ```
