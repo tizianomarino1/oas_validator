@@ -10,7 +10,7 @@ Validatore OpenAPI 3.0
    ```cmd
    cd \percorso\alla\cartella\oas_validator
    ```
-3. Lancia il compilatore **C**:
+3. Lancia il compilatore C11 `cl`:
 > ```cmd
 > cl /W4 /O2 /std:c11 /Iinclude /Iexternal src\main.c src\fileutil.c src\oas_extract.c src\jsonschema.c external\cJSON.c /Fe:oas_validator.exe
 > ```
