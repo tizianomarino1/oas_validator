@@ -1,7 +1,7 @@
 #ifndef JSONSCHEMA_H
 #define JSONSCHEMA_H
 #include <stdbool.h>
-#include "external/cJSON.h"
+#include "cJSON.h"
 
 typedef struct
 {
