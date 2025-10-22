@@ -1,1 +1,6 @@
 .DS_Store
+*.obj
+*.exe
+*.exp
+*.lib
+compile.bat
