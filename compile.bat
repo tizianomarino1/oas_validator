@@ -1,1 +1,0 @@
-cl /W4 /O2 /std:c11 main.c fileutil.c oas_extract.c jsonschema.c external\cJSON.c /Fe:oas_validator.exe
