@@ -7,6 +7,7 @@
 #include "jsonschema.h"
 #include "oas_extract.h"
 #include "cJSON.h"
+#include "miniyaml.h"
 
 static void print_usage(const char *prog) {
     fprintf(stderr, "Uso: %s <request.json> <openapi.json>\n", prog);
@@ -26,25 +27,33 @@ int main(int argc, char **argv) {
     char *oas_spec  = read_entire_file(argv[2], &oas_len);
     if (!oas_spec) { free(json_body); return 1; }
 
-    // per ora solo OAS in JSON
-    if (ltrim(oas_spec)[0] != '{') {
-        fprintf(stderr, "Errore: per lo step 3 il file OpenAPI deve essere JSON (non YAML). "
-                        "Converti a JSON e riprova.\n");
-        free(json_body); free(oas_spec);
-        return 3;
-    }
-
     cJSON *inst = cJSON_ParseWithLength(json_body, (int)json_len);
     if (!inst) {
         fprintf(stderr, "Errore: JSON body non valido.\n");
         free(json_body); free(oas_spec);
         return 4;
     }
-    cJSON *oas = cJSON_ParseWithLength(oas_spec, (int)oas_len);
-    if (!oas) {
-        fprintf(stderr, "Errore: OpenAPI JSON non valido.\n");
-        cJSON_Delete(inst); free(json_body); free(oas_spec);
-        return 5;
+    const char *oas_trim = ltrim(oas_spec);
+    cJSON *oas = NULL;
+    if (oas_trim[0] == '{' || oas_trim[0] == '[') {
+        oas = cJSON_ParseWithLength(oas_spec, (int)oas_len);
+        if (!oas) {
+            fprintf(stderr, "Errore: OpenAPI JSON non valido.\n");
+            cJSON_Delete(inst); free(json_body); free(oas_spec);
+            return 5;
+        }
+    } else {
+        char *yaml_error = NULL;
+        oas = miniyaml_parse(oas_spec, &yaml_error);
+        if (!oas) {
+            fprintf(stderr, "Errore: OpenAPI YAML non valido%s%s\n",
+                    yaml_error ? ": " : "",
+                    yaml_error ? yaml_error : "");
+            free(yaml_error);
+            cJSON_Delete(inst); free(json_body); free(oas_spec);
+            return 5;
+        }
+        free(yaml_error);
     }
 
     // check openapi 3.x minimale
