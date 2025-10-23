@@ -83,9 +83,9 @@ int main(int argc, char **argv) {
     jsval_result res = js_validate(inst, schema, &ctx);
 
     if (res.ok) {
-        printf("VALIDO ✅\n");
+        printf("OK");
     } else {
-        printf("NON VALIDO ❌\nMotivo: %s\n", res.error_msg ? res.error_msg : "(sconosciuto)");
+        printf("NON VALIDO - Motivo: %s\n", res.error_msg ? res.error_msg : "(sconosciuto)");
     }
 
     jsval_result_free(&res);
