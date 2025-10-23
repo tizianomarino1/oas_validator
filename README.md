@@ -32,4 +32,4 @@ L'eseguibile risultante (in `build/oas_validator.exe` su Windows oppure `build/o
 ```
 
 Entrambi i file di input possono essere in formato JSON o YAML: il programma riconosce automaticamente il formato da validare.
-Il programma stampa `VALIDO ✅` quando il payload fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
+Il programma stampa `OK` quando il payload fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
