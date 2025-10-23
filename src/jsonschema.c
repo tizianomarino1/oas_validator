@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <limits.h>
 #include <stdarg.h>
+#ifndef _MSC_VER
+#include <regex.h>
+#endif
 
 // Restituisce un risultato di validazione positivo senza messaggio di errore.
 static jsval_result ok(void) { return (jsval_result){true, NULL}; }
@@ -34,9 +37,9 @@ void jsval_result_free(jsval_result *r)
 
 // Crea un contesto di validazione per future risoluzioni di $ref.
 // Attualmente si limita a memorizzare il nodo radice dell'OAS.
-jsval_ctx jsval_ctx_make(cJSON *oas_root)
+jsval_ctx jsval_ctx_make(cJSON *oas_root, jsval_mode mode)
 {
-  jsval_ctx c = {oas_root};
+  jsval_ctx c = {oas_root, mode};
   return c;
 }
 
@@ -104,6 +107,34 @@ static jsval_result validate_string_bounds(cJSON *inst, cJSON *schema)
   if (cJSON_IsNumber(maxL) && (int)strlen(s) > maxL->valueint)
     return errf("Stringa più lunga di maxLength");
   return ok();
+}
+
+// Applica il vincolo pattern per le stringhe se definito.
+static jsval_result validate_string_pattern(cJSON *inst, cJSON *schema)
+{
+  if (!cJSON_IsString(inst))
+    return ok();
+
+  cJSON *pattern = cJSON_GetObjectItemCaseSensitive(schema, "pattern");
+  if (!cJSON_IsString(pattern))
+    return ok();
+
+#ifdef _MSC_VER
+  (void)inst;
+  (void)pattern;
+  return ok();
+#else
+  regex_t re;
+  int rc = regcomp(&re, pattern->valuestring, REG_EXTENDED | REG_NOSUB);
+  if (rc != 0)
+    return errf("Pattern non valido nello schema.");
+
+  rc = regexec(&re, inst->valuestring, 0, NULL, 0);
+  regfree(&re);
+  if (rc == 0)
+    return ok();
+  return errf("Stringa non conforme al pattern.");
+#endif
 }
 
 // Applica i limiti minimum/maximum per numeri se definiti nello schema.
@@ -224,17 +255,20 @@ static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx 
     return errf("Atteso object.");
 
   // required
-  cJSON *req = cJSON_GetObjectItemCaseSensitive(schema, "required");
-  if (cJSON_IsArray(req))
+  if (!ctx || ctx->mode == JSVAL_MODE_STRICT)
   {
-    cJSON *r = NULL;
-    cJSON_ArrayForEach(r, req)
+    cJSON *req = cJSON_GetObjectItemCaseSensitive(schema, "required");
+    if (cJSON_IsArray(req))
     {
-      if (cJSON_IsString(r))
+      cJSON *r = NULL;
+      cJSON_ArrayForEach(r, req)
       {
-        if (!cJSON_HasObjectItem(inst, r->valuestring))
+        if (cJSON_IsString(r))
         {
-          return errf("Campo richiesto mancante: '%s'", r->valuestring);
+          if (!cJSON_HasObjectItem(inst, r->valuestring))
+          {
+            return errf("Campo richiesto mancante: '%s'", r->valuestring);
+          }
         }
       }
     }
@@ -258,6 +292,20 @@ static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx 
         jsval_result r = js_validate_impl(child, subschema, ctx);
         if (!r.ok)
           return r;
+      }
+    }
+  }
+
+  if (ctx && ctx->mode == JSVAL_MODE_LEXICAL)
+  {
+    cJSON *props = cJSON_GetObjectItemCaseSensitive(schema, "properties");
+    cJSON *child = NULL;
+    cJSON_ArrayForEach(child, inst)
+    {
+      if (!props || !cJSON_IsObject(props) ||
+          !cJSON_GetObjectItemCaseSensitive(props, child->string))
+      {
+        return errf("Chiave non prevista: '%s'", child->string ? child->string : "(null)");
       }
     }
   }
@@ -285,6 +333,9 @@ static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx
   // enum / bounds
   jsval_result r;
   r = validate_enum(inst, schema);
+  if (!r.ok)
+    return r;
+  r = validate_string_pattern(inst, schema);
   if (!r.ok)
     return r;
   r = validate_string_bounds(inst, schema);

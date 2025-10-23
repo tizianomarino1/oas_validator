@@ -1,4 +1,4 @@
-// Uso: openapi_validator <request.json> <openapi.json>
+// Uso: openapi_validator <request.json> <openapi.json> [strict-rule|lexical-rule]
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@
 
 // Stampa su stderr la sintassi corretta del programma.
 static void print_usage(const char *prog) {
-    fprintf(stderr, "Uso: %s <request.(json|yaml)> <openapi.(json|yaml)>\n", prog);
+    fprintf(stderr, "Uso: %s <request.(json|yaml)> <openapi.(json|yaml)> [strict-rule|lexical-rule]\n", prog);
 }
 
 // Restituisce un puntatore al primo carattere non spazio/tab/newline della stringa.
@@ -23,7 +23,20 @@ static const char* ltrim(const char *s) {
 // Punto di ingresso del validatore: carica i file, gestisce JSON/YAML e
 // avvia la validazione restituendo 0 se il payload è conforme allo schema.
 int main(int argc, char **argv) {
-    if (argc != 3) { print_usage(argv[0]); return 2; }
+    if (argc < 3 || argc > 4) { print_usage(argv[0]); return 2; }
+
+    jsval_mode mode = JSVAL_MODE_STRICT;
+    if (argc == 4) {
+        if (strcmp(argv[3], "strict-rule") == 0) {
+            mode = JSVAL_MODE_STRICT;
+        } else if (strcmp(argv[3], "lexical-rule") == 0) {
+            mode = JSVAL_MODE_LEXICAL;
+        } else {
+            fprintf(stderr, "Errore: modalità sconosciuta '%s'.\n", argv[3]);
+            print_usage(argv[0]);
+            return 2;
+        }
+    }
 
     size_t json_len=0, oas_len=0;
     char *json_body = read_entire_file(argv[1], &json_len);
@@ -95,7 +108,7 @@ int main(int argc, char **argv) {
     }
 
     // valida
-    jsval_ctx ctx = jsval_ctx_make(oas); // per futuro: $ref/components
+    jsval_ctx ctx = jsval_ctx_make(oas, mode); // per futuro: $ref/components e modalità
     jsval_result res = js_validate(inst, schema, &ctx);
 
     if (res.ok) {

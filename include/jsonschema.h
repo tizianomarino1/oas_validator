@@ -11,15 +11,24 @@ typedef struct
   char *error_msg;
 } jsval_result;
 
+// Modalità di validazione disponibili.
+typedef enum
+{
+  JSVAL_MODE_STRICT,
+  JSVAL_MODE_LEXICAL
+} jsval_mode;
+
 // Contesto di validazione: consente l'accesso alla radice del documento OAS
-// per future estensioni (es. risoluzione di $ref/components).
+// per future estensioni (es. risoluzione di $ref/components) e conserva la
+// modalità richiesta.
 typedef struct
 {
   cJSON *oas_root; // per step futuri ($ref/components)
+  jsval_mode mode;
 } jsval_ctx;
 
 // Inizializza un contesto di validazione partendo dal nodo radice OAS.
-jsval_ctx jsval_ctx_make(cJSON *oas_root);
+jsval_ctx jsval_ctx_make(cJSON *oas_root, jsval_mode mode);
 // Libera le risorse allocate all'interno di un jsval_result (se presenti).
 void jsval_result_free(jsval_result *r);
 
