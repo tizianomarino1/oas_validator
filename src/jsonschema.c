@@ -5,8 +5,10 @@
 #include <limits.h>
 #include <stdarg.h>
 
+// Restituisce un risultato di validazione positivo senza messaggio di errore.
 static jsval_result ok(void) { return (jsval_result){true, NULL}; }
 
+// Helper per creare un jsval_result di errore formattando il messaggio.
 static jsval_result errf(const char *fmt, ...)
 {
   jsval_result r = {false, NULL};
@@ -20,6 +22,7 @@ static jsval_result errf(const char *fmt, ...)
   return r;
 }
 
+// Libera l'eventuale messaggio di errore contenuto in un jsval_result.
 void jsval_result_free(jsval_result *r)
 {
   if (r && r->error_msg)
@@ -29,18 +32,23 @@ void jsval_result_free(jsval_result *r)
   }
 }
 
+// Crea un contesto di validazione per future risoluzioni di $ref.
+// Attualmente si limita a memorizzare il nodo radice dell'OAS.
 jsval_ctx jsval_ctx_make(cJSON *oas_root)
 {
   jsval_ctx c = {oas_root};
   return c;
 }
 
+// Estrae la stringa "type" da uno schema JSON (case insensitive).
 static const char *get_type(cJSON *schema)
 {
   cJSON *t = cJSON_GetObjectItemCaseSensitive(schema, "type");
   return cJSON_IsString(t) ? t->valuestring : NULL;
 }
 
+// Verifica che l'istanza `inst` corrisponda al tipo JSON Schema `t`.
+// Se `t` è NULL la funzione accetta qualsiasi tipo.
 static bool is_type(cJSON *inst, const char *t)
 {
   if (!t)
@@ -62,6 +70,8 @@ static bool is_type(cJSON *inst, const char *t)
   return true; // tipi non standard: ignora
 }
 
+// Valida la presenza (opzionale) di un vincolo "enum" nello schema.
+// Restituisce errore se il valore non è presente nella lista enumerata.
 static jsval_result validate_enum(cJSON *inst, cJSON *schema)
 {
   cJSON *enm = cJSON_GetObjectItemCaseSensitive(schema, "enum");
@@ -81,6 +91,7 @@ static jsval_result validate_enum(cJSON *inst, cJSON *schema)
   return errf("Valore non incluso in 'enum'.");
 }
 
+// Applica i limiti minLength/maxLength per stringhe se definiti.
 static jsval_result validate_string_bounds(cJSON *inst, cJSON *schema)
 {
   if (!cJSON_IsString(inst))
@@ -95,6 +106,7 @@ static jsval_result validate_string_bounds(cJSON *inst, cJSON *schema)
   return ok();
 }
 
+// Applica i limiti minimum/maximum per numeri se definiti nello schema.
 static jsval_result validate_numeric_bounds(cJSON *inst, cJSON *schema)
 {
   if (!cJSON_IsNumber(inst))
@@ -110,6 +122,7 @@ static jsval_result validate_numeric_bounds(cJSON *inst, cJSON *schema)
 
 static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx *ctx);
 
+// Valida gli elementi di un array utilizzando ricorsivamente lo schema `items`.
 static jsval_result validate_array(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
   cJSON *items = cJSON_GetObjectItemCaseSensitive(schema, "items");
@@ -127,6 +140,7 @@ static jsval_result validate_array(cJSON *inst, cJSON *schema, const jsval_ctx *
   return ok();
 }
 
+// Valida un oggetto JSON confrontando proprietà richieste e sotto-schemi.
 static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
   if (!cJSON_IsObject(inst))
@@ -173,6 +187,7 @@ static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx 
   return ok();
 }
 
+// Implementazione ricorsiva del validatore per un sottoalbero JSON.
 static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
   (void)ctx; // step 3: non usiamo ancora components/$ref
@@ -207,6 +222,8 @@ static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx
   return ok();
 }
 
+// Punto di ingresso pubblico per validare `instance` rispetto a `schema`.
+// Il contesto permette future estensioni per la risoluzione di riferimenti.
 jsval_result js_validate(cJSON *instance, cJSON *schema, const jsval_ctx *ctx)
 {
   return js_validate_impl(instance, schema, ctx);

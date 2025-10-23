@@ -17,6 +17,10 @@
 #define FTELL ftello
 #endif
 
+// Legge l'intero contenuto di un file binario e restituisce un buffer
+// terminato da NUL. In caso di successo popola `out_len` (se non NULL)
+// con il numero di byte letti. In caso di errore stampa un messaggio
+// su stderr e restituisce NULL.
 char *read_entire_file(const char *path, size_t *out_len) {
     FILE *f = fopen(path, "rb");
     if (!f) { fprintf(stderr, "Errore aprendo '%s': %s\n", path, strerror(errno)); return NULL; }

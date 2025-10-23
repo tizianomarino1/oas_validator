@@ -9,15 +9,19 @@
 #include "cJSON.h"
 #include "miniyaml.h"
 
+// Stampa su stderr la sintassi corretta del programma.
 static void print_usage(const char *prog) {
     fprintf(stderr, "Uso: %s <request.json> <openapi.json>\n", prog);
 }
 
+// Restituisce un puntatore al primo carattere non spazio/tab/newline della stringa.
 static const char* ltrim(const char *s) {
     while (*s==' '||*s=='\t'||*s=='\r'||*s=='\n') ++s;
     return s;
 }
 
+// Punto di ingresso del validatore: carica i file, gestisce JSON/YAML e
+// avvia la validazione restituendo 0 se il payload è conforme allo schema.
 int main(int argc, char **argv) {
     if (argc != 3) { print_usage(argv[0]); return 2; }
 
