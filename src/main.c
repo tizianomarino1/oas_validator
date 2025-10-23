@@ -11,7 +11,7 @@
 
 // Stampa su stderr la sintassi corretta del programma.
 static void print_usage(const char *prog) {
-    fprintf(stderr, "Uso: %s <request.json> <openapi.json>\n", prog);
+    fprintf(stderr, "Uso: %s <request.(json|yaml)> <openapi.(json|yaml)>\n", prog);
 }
 
 // Restituisce un puntatore al primo carattere non spazio/tab/newline della stringa.
@@ -31,11 +31,27 @@ int main(int argc, char **argv) {
     char *oas_spec  = read_entire_file(argv[2], &oas_len);
     if (!oas_spec) { free(json_body); return 1; }
 
-    cJSON *inst = cJSON_ParseWithLength(json_body, (int)json_len);
-    if (!inst) {
-        fprintf(stderr, "Errore: JSON body non valido.\n");
-        free(json_body); free(oas_spec);
-        return 4;
+    const char *body_trim = ltrim(json_body);
+    cJSON *inst = NULL;
+    if (body_trim[0] == '{' || body_trim[0] == '[') {
+        inst = cJSON_ParseWithLength(json_body, (int)json_len);
+        if (!inst) {
+            fprintf(stderr, "Errore: JSON body non valido.\n");
+            free(json_body); free(oas_spec);
+            return 4;
+        }
+    } else {
+        char *yaml_error = NULL;
+        inst = miniyaml_parse(json_body, &yaml_error);
+        if (!inst) {
+            fprintf(stderr, "Errore: YAML body non valido%s%s\n",
+                    yaml_error ? ": " : "",
+                    yaml_error ? yaml_error : "");
+            free(yaml_error);
+            free(json_body); free(oas_spec);
+            return 4;
+        }
+        free(yaml_error);
     }
     const char *oas_trim = ltrim(oas_spec);
     cJSON *oas = NULL;
