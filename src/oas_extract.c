@@ -1,6 +1,8 @@
 #include "oas_extract.h"
 #include <string.h>
 
+// Cerca il primo schema JSON all'interno della sezione "content" di un requestBody.
+// Restituisce il nodo schema o NULL se assente/non valido.
 static cJSON *first_schema_in_content(cJSON *content)
 {
   cJSON *appjson = cJSON_GetObjectItemCaseSensitive(content, "application/json");
@@ -10,6 +12,8 @@ static cJSON *first_schema_in_content(cJSON *content)
   return cJSON_IsObject(media) ? media : NULL;
 }
 
+// Ispeziona il documento OpenAPI e restituisce il primo schema JSON associato
+// a un requestBody application/json. Restituisce NULL se non viene trovato.
 cJSON *oas_first_request_body_schema(cJSON *oas_root)
 {
   if (!cJSON_IsObject(oas_root))

@@ -2,7 +2,8 @@
 #define OAS_EXTRACT_H
 #include "cJSON.h"
 
-// Ritorna lo schema del primo requestBody application/json trovato.
+// Ritorna lo schema del primo requestBody application/json trovato
+// navigando l'albero `paths` della specifica OpenAPI.
 // (Borrowed pointer: non fare cJSON_Delete su questo.)
 cJSON *oas_first_request_body_schema(cJSON *oas_root);
 

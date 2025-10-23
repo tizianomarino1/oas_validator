@@ -3,18 +3,24 @@
 #include <stdbool.h>
 #include "cJSON.h"
 
+// Risultato della validazione: `ok` indica successo, `error_msg` contiene
+// il motivo del fallimento (heap-allocated) quando `ok` è false.
 typedef struct
 {
   bool ok;
   char *error_msg;
 } jsval_result;
 
+// Contesto di validazione: consente l'accesso alla radice del documento OAS
+// per future estensioni (es. risoluzione di $ref/components).
 typedef struct
 {
   cJSON *oas_root; // per step futuri ($ref/components)
 } jsval_ctx;
 
+// Inizializza un contesto di validazione partendo dal nodo radice OAS.
 jsval_ctx jsval_ctx_make(cJSON *oas_root);
+// Libera le risorse allocate all'interno di un jsval_result (se presenti).
 void jsval_result_free(jsval_result *r);
 
 // Validatore ricorsivo base per subset OAS Schema Object.
