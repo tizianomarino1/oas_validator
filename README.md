@@ -28,7 +28,8 @@ Validatore OpenAPI 3.0
 L'eseguibile risultante (in `build/oas_validator.exe` su Windows oppure `build/oas_validator` su Linux) accetta due argomenti:
 
 ```bash
-./build/oas_validator richiesta.json openapi.json
+./build/oas_validator richiesta.json openapi.yaml
 ```
 
-Il programma stampa `VALIDO ✅` quando il JSON fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
+Entrambi i file di input possono essere in formato JSON o YAML: il programma riconosce automaticamente il formato da validare.
+Il programma stampa `VALIDO ✅` quando il payload fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
