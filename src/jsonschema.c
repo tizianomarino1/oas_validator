@@ -122,6 +122,83 @@ static jsval_result validate_numeric_bounds(cJSON *inst, cJSON *schema)
 
 static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx *ctx);
 
+// Decodifica un token JSON Pointer sostituendo le sequenze ~0 e ~1.
+static bool decode_pointer_token(const char *start, size_t len, char *out, size_t out_sz)
+{
+  if (!out || out_sz == 0)
+    return false;
+  size_t j = 0;
+  for (size_t i = 0; i < len; ++i)
+  {
+    char c = start[i];
+    if (c == '~' && i + 1 < len)
+    {
+      char next = start[i + 1];
+      if (next == '0')
+      {
+        c = '~';
+        ++i;
+      }
+      else if (next == '1')
+      {
+        c = '/';
+        ++i;
+      }
+    }
+    if (j + 1 >= out_sz)
+      return false;
+    out[j++] = c;
+  }
+  if (j >= out_sz)
+    return false;
+  out[j] = '\0';
+  return true;
+}
+
+// Risolve un riferimento JSON Pointer limitato a riferimenti interni (#/...) dell'OAS.
+static cJSON *resolve_ref(const char *ref, const jsval_ctx *ctx)
+{
+  if (!ref || !ctx || !ctx->oas_root)
+    return NULL;
+  if (strncmp(ref, "#/", 2) != 0)
+    return NULL; // supportiamo solo riferimenti interni
+
+  cJSON *node = ctx->oas_root;
+  const char *p = ref + 2;
+  while (*p)
+  {
+    const char *slash = strchr(p, '/');
+    size_t len = slash ? (size_t)(slash - p) : strlen(p);
+    if (len == 0)
+      return NULL;
+
+    char token[256];
+    if (!decode_pointer_token(p, len, token, sizeof(token)))
+      return NULL;
+
+    if (cJSON_IsArray(node))
+    {
+      char *endptr = NULL;
+      long idx = strtol(token, &endptr, 10);
+      if (!endptr || *endptr != '\0' || idx < 0)
+        return NULL;
+      node = cJSON_GetArrayItem(node, (int)idx);
+    }
+    else
+    {
+      node = cJSON_GetObjectItemCaseSensitive(node, token);
+    }
+
+    if (!node)
+      return NULL;
+
+    if (!slash)
+      break;
+    p = slash + 1;
+  }
+  return node;
+}
+
 // Valida gli elementi di un array utilizzando ricorsivamente lo schema `items`.
 static jsval_result validate_array(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
@@ -190,7 +267,15 @@ static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx 
 // Implementazione ricorsiva del validatore per un sottoalbero JSON.
 static jsval_result js_validate_impl(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
-  (void)ctx; // step 3: non usiamo ancora components/$ref
+  // Risolvi $ref se presente
+  cJSON *ref = cJSON_GetObjectItemCaseSensitive(schema, "$ref");
+  if (cJSON_IsString(ref))
+  {
+    cJSON *resolved = resolve_ref(ref->valuestring, ctx);
+    if (!resolved)
+      return errf("Impossibile risolvere $ref '%s'.", ref->valuestring);
+    return js_validate_impl(inst, resolved, ctx);
+  }
 
   // type
   const char *t = get_type(schema);
