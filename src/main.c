@@ -1,8 +1,9 @@
-// Uso: openapi_validator <request.json> <openapi.json> [strict-rule|lexical-rule]
+// Uso: openapi_validator <request.json> <openapi.json> <http-method> <endpoint> [strict-rule|lexical-rule]
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "fileutil.h"
 #include "jsonschema.h"
 #include "oas_extract.h"
@@ -11,7 +12,7 @@
 
 // Stampa su stderr la sintassi corretta del programma.
 static void print_usage(const char *prog) {
-    fprintf(stderr, "Uso: %s <request.(json|yaml)> <openapi.(json|yaml)> [strict-rule|lexical-rule]\n", prog);
+    fprintf(stderr, "Uso: %s <request.(json|yaml)> <openapi.(json|yaml)> <http-method> <endpoint> [strict-rule|lexical-rule]\n", prog);
 }
 
 // Restituisce un puntatore al primo carattere non spazio/tab/newline della stringa.
@@ -20,19 +21,30 @@ static const char* ltrim(const char *s) {
     return s;
 }
 
+static char* lowercase_dup(const char *s) {
+    size_t len = strlen(s);
+    char *dup = (char*)malloc(len + 1);
+    if (!dup) return NULL;
+    for (size_t i = 0; i < len; ++i) {
+        dup[i] = (char)tolower((unsigned char)s[i]);
+    }
+    dup[len] = '\0';
+    return dup;
+}
+
 // Punto di ingresso del validatore: carica i file, gestisce JSON/YAML e
 // avvia la validazione restituendo 0 se il payload è conforme allo schema.
 int main(int argc, char **argv) {
-    if (argc < 3 || argc > 4) { print_usage(argv[0]); return 2; }
+    if (argc < 5 || argc > 6) { print_usage(argv[0]); return 2; }
 
     jsval_mode mode = JSVAL_MODE_STRICT;
-    if (argc == 4) {
-        if (strcmp(argv[3], "strict-rule") == 0) {
+    if (argc == 6) {
+        if (strcmp(argv[5], "strict-rule") == 0) {
             mode = JSVAL_MODE_STRICT;
-        } else if (strcmp(argv[3], "lexical-rule") == 0) {
+        } else if (strcmp(argv[5], "lexical-rule") == 0) {
             mode = JSVAL_MODE_LEXICAL;
         } else {
-            fprintf(stderr, "Errore: modalità sconosciuta '%s'.\n", argv[3]);
+            fprintf(stderr, "Errore: modalità sconosciuta '%s'.\n", argv[5]);
             print_usage(argv[0]);
             return 2;
         }
@@ -43,6 +55,9 @@ int main(int argc, char **argv) {
     if (!json_body) return 1;
     char *oas_spec  = read_entire_file(argv[2], &oas_len);
     if (!oas_spec) { free(json_body); return 1; }
+
+    const char *http_method_arg = argv[3];
+    const char *endpoint_arg = argv[4];
 
     const char *body_trim = ltrim(json_body);
     cJSON *inst = NULL;
@@ -98,10 +113,18 @@ int main(int argc, char **argv) {
         return 6;
     }
 
-    // estrai il primo schema di requestBody application/json
-    cJSON *schema = oas_first_request_body_schema(oas);
+    char *method_lower = lowercase_dup(http_method_arg);
+    if (!method_lower) {
+        fprintf(stderr, "Errore: memoria insufficiente per elaborare il metodo HTTP.\n");
+        cJSON_Delete(inst); cJSON_Delete(oas);
+        free(json_body); free(oas_spec);
+        return 8;
+    }
+
+    cJSON *schema = oas_request_body_schema(oas, method_lower, endpoint_arg);
+    free(method_lower);
     if (!schema) {
-        fprintf(stderr, "Errore: impossibile trovare requestBody application/json->schema.\n");
+        fprintf(stderr, "Errore: impossibile trovare requestBody application/json->schema per %s %s.\n", http_method_arg, endpoint_arg);
         cJSON_Delete(inst); cJSON_Delete(oas);
         free(json_body); free(oas_spec);
         return 7;

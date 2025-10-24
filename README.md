@@ -25,10 +25,10 @@ Validatore OpenAPI 3.0
    ```
    (Sostituisci `gcc` con `clang` se preferisci.)
 
-L'eseguibile risultante (in `build/oas_validator.exe` su Windows oppure `build/oas_validator` su Linux) accetta due argomenti obbligatori e uno opzionale per selezionare la modalità di validazione:
+L'eseguibile risultante (in `build/oas_validator.exe` su Windows oppure `build/oas_validator` su Linux) accetta quattro argomenti obbligatori e uno opzionale per selezionare la modalità di validazione:
 
 ```bash
-./build/oas_validator richiesta.json openapi.yaml [strict-rule|lexical-rule]
+./build/oas_validator richiesta.json openapi.yaml POST /audit [strict-rule|lexical-rule]
 ```
 
-Entrambi i file di input possono essere in formato JSON o YAML: il programma riconosce automaticamente il formato da validare. Senza ulteriori argomenti il validatore usa la modalità `strict-rule`, che considera i campi obbligatori (`required`) e gli altri vincoli previsti dagli schemi. Specificando `lexical-rule` il controllo si concentra invece sulla corrispondenza tra nomi delle chiavi presenti nel payload e nello schema, oltre a verificarne i tipi e i pattern indicati. In entrambi i casi il programma stampa `OK` quando il payload fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
+Entrambi i file di input possono essere in formato JSON o YAML: il programma riconosce automaticamente il formato da validare. Il terzo e il quarto argomento indicano rispettivamente il metodo HTTP (è accettato anche in maiuscolo, ad esempio `POST`) e il path dell'endpoint così come definito nella sezione `paths` della specifica OpenAPI. Senza ulteriori argomenti il validatore usa la modalità `strict-rule`, che considera i campi obbligatori (`required`) e gli altri vincoli previsti dagli schemi. Specificando `lexical-rule` il controllo si concentra invece sulla corrispondenza tra nomi delle chiavi presenti nel payload e nello schema, oltre a verificarne i tipi e i pattern indicati. In entrambi i casi il programma stampa `OK` quando il payload fornito rispetta lo schema individuato nella specifica OpenAPI 3.x, altrimenti indica l'errore.
