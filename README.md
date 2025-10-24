@@ -13,7 +13,10 @@ Validatore OpenAPI 3.0
 3. Crea la cartella di output e compila indicando la destinazione dei binari in `build\`:
    ```cmd
    if not exist build mkdir build
-   cl /W4 /O2 /std:c11 /Iinclude /Iexternal src\main.c src\fileutil.c src\oas_extract.c src\jsonschema.c external\cJSON.c external\miniyaml.c /Fe:build\oas_validator.exe
+   cl /W4 /O2 /std:c11 /Iinclude /Iexternal \
+      src\main.c src\fileutil.c src\oas_extract.c src\jsonschema.c src\regex_compat.c \
+      external\cJSON.c external\miniyaml.c \
+      /Fe:build\oas_validator.exe
    ```
 
 ### Linux (GCC o Clang)
