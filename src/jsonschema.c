@@ -248,6 +248,59 @@ static jsval_result validate_array(cJSON *inst, cJSON *schema, const jsval_ctx *
   return ok();
 }
 
+// Applica i sotto-schemi di patternProperties alle chiavi che combaciano.
+static jsval_result apply_pattern_properties_to_child(
+    cJSON *child, cJSON *pattern_props, const jsval_ctx *ctx, bool *matched_out)
+{
+  if (matched_out)
+    *matched_out = false;
+
+  if (!cJSON_IsObject(pattern_props) || !child)
+    return ok();
+
+#ifndef _MSC_VER
+  cJSON *pp = NULL;
+  const char *prop_name = child->string ? child->string : "";
+  cJSON_ArrayForEach(pp, pattern_props)
+  {
+    const char *pattern = pp->string;
+    if (!pattern)
+      continue;
+
+    regex_t re;
+    int rc = regcomp(&re, pattern, REG_EXTENDED | REG_NOSUB);
+    if (rc != 0)
+      return errf("Pattern non valido nello schema: '%s'.", pattern);
+
+    rc = regexec(&re, prop_name, 0, NULL, 0);
+    regfree(&re);
+    if (rc == 0)
+    {
+      if (matched_out)
+        *matched_out = true;
+
+      if (cJSON_IsObject(pp) || cJSON_IsArray(pp))
+      {
+        jsval_result sub = js_validate_impl(child, pp, ctx);
+        if (!sub.ok)
+          return sub;
+      }
+      else if (cJSON_IsBool(pp))
+      {
+        if (cJSON_IsFalse(pp))
+          return errf("Chiave '%s' non ammessa da patternProperties.", prop_name);
+      }
+    }
+  }
+#else
+  (void)pattern_props;
+  (void)ctx;
+  (void)child;
+#endif
+
+  return ok();
+}
+
 // Valida un oggetto JSON confrontando proprietà richieste e sotto-schemi.
 static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx *ctx)
 {
@@ -296,16 +349,29 @@ static jsval_result validate_object(cJSON *inst, cJSON *schema, const jsval_ctx 
     }
   }
 
-  if (ctx && ctx->mode == JSVAL_MODE_LEXICAL)
+  cJSON *pattern_props = cJSON_GetObjectItemCaseSensitive(schema, "patternProperties");
+  if (cJSON_IsObject(pattern_props) || (ctx && ctx->mode == JSVAL_MODE_LEXICAL))
   {
-    cJSON *props = cJSON_GetObjectItemCaseSensitive(schema, "properties");
     cJSON *child = NULL;
     cJSON_ArrayForEach(child, inst)
     {
-      if (!props || !cJSON_IsObject(props) ||
-          !cJSON_GetObjectItemCaseSensitive(props, child->string))
+      bool matched_pattern = false;
+      if (cJSON_IsObject(pattern_props))
       {
-        return errf("Chiave non prevista: '%s'", child->string ? child->string : "(null)");
+        jsval_result r = apply_pattern_properties_to_child(child, pattern_props, ctx, &matched_pattern);
+        if (!r.ok)
+          return r;
+      }
+
+      if (ctx && ctx->mode == JSVAL_MODE_LEXICAL)
+      {
+        bool in_props = cJSON_IsObject(props) &&
+                        child->string &&
+                        cJSON_GetObjectItemCaseSensitive(props, child->string) != NULL;
+        if (!in_props && !matched_pattern)
+        {
+          return errf("Chiave non prevista: '%s'", child->string ? child->string : "(null)");
+        }
       }
     }
   }
