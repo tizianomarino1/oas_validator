@@ -6,6 +6,8 @@
 #include <stdarg.h>
 #ifndef _MSC_VER
 #include <regex.h>
+#else
+#include "regex_compat.h"
 #endif
 
 // Restituisce un risultato di validazione positivo senza messaggio di errore.
@@ -120,9 +122,12 @@ static jsval_result validate_string_pattern(cJSON *inst, cJSON *schema)
     return ok();
 
 #ifdef _MSC_VER
-  (void)inst;
-  (void)pattern;
-  return ok();
+  regex_compat_result re = regex_compat_match(pattern->valuestring, inst->valuestring);
+  if (!re.valid)
+    return errf("Pattern non valido nello schema.");
+  if (re.matched)
+    return ok();
+  return errf("Stringa non conforme al pattern.");
 #else
   regex_t re;
   int rc = regcomp(&re, pattern->valuestring, REG_EXTENDED | REG_NOSUB);
